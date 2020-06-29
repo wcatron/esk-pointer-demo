@@ -3,10 +3,13 @@ import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
 import * as serviceWorker from './serviceWorker';
+import { ESK } from './useEsk';
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <ESK url={`ws://${window.location.host.split(':')[0]}:8080/ws`}>
+      <App />
+    </ESK>
   </React.StrictMode>,
   document.getElementById('root')
 );
