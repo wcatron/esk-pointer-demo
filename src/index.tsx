@@ -7,7 +7,7 @@ import { ESK } from './useEsk';
 
 ReactDOM.render(
   <React.StrictMode>
-    <ESK url={`ws://${window.location.host.split(':')[0]}:8080/ws`}>
+    <ESK url={`wss://demo.eskit.net/ws`}>
       <App />
     </ESK>
   </React.StrictMode>,
