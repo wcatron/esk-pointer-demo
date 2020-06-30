@@ -18,44 +18,50 @@ type Projection = {
     count: number
 }
 
-function nextProjection(current: Projection, event: EventPayload) {
-    console.log('nextProjection', current, event)
-    const count = current.count + 1
-    switch (event.event) {
-        case 'ticket':
-            return {
-                ...current,
-                currentTicket: event.value,
-                complete: false,
-                votes: {
-                    ...current.votes,
-                    [event.value]: []
-                },
-                count
-            }
-        case 'complete':
-            return {
-                ...current,
-                currentTicket: '',
-                complete: true,
-                count
-            }
-        case 'vote':
-            const currentVotes = current.currentTicket in current.votes ? current.votes[current.currentTicket] : []
-            return {
-                ...current,
-                votes: {
-                    ...current.votes,
-                    [current.currentTicket]: [
-                        ...currentVotes,
-                        {
-                            name: event.name,
-                            vote: parseInt(event.value)
-                        }
-                    ]
-                },
-                count
-            }
+function nextProjection(current: Projection, message: Message) {
+    try {
+        const event = JSON.parse(message.payload) as EventPayload
+        console.log('nextProjection', current, event)
+        const count = current.count + 1
+        switch (event.event) {
+            case 'ticket':
+                return {
+                    ...current,
+                    currentTicket: event.value,
+                    complete: false,
+                    votes: {
+                        ...current.votes,
+                        [event.value]: []
+                    },
+                    count
+                }
+            case 'complete':
+                return {
+                    ...current,
+                    currentTicket: '',
+                    complete: true,
+                    count
+                }
+            case 'vote':
+                const currentVotes = current.currentTicket in current.votes ? current.votes[current.currentTicket] : []
+                return {
+                    ...current,
+                    votes: {
+                        ...current.votes,
+                        [current.currentTicket]: [
+                            ...currentVotes,
+                            {
+                                name: event.name,
+                                vote: parseInt(event.value)
+                            }
+                        ]
+                    },
+                    count
+                }
+        }
+    } catch (e) {
+        console.error(e)
+        return current
     }
 }
 
@@ -85,8 +91,7 @@ export const SessionView: React.FC<{
     const client = useEsk()
     const [currentState, setCurrentState] = useState<Projection>(singletonState)
     const onEvent = useCallback((message: Message) => {
-        const event = JSON.parse(message.payload) as EventPayload
-        const nextState = nextProjection(singletonState, event)
+        const nextState = nextProjection(singletonState, message)
         singletonState = nextState
         setCurrentState(nextState)
     }, [setCurrentState])
@@ -130,36 +135,43 @@ export const SessionView: React.FC<{
             localStorage.removeItem('name')
             setName(undefined)
         }
-    }}>{name}</button> / {displayTicket}</h2>
+    }}>{name}</button> / {displayTicket || <i style={{
+        opacity: 0.5
+    }}>ABC-123</i>}</h2>
         {complete ? <div>
             <input disabled={!complete} placeholder='Enter ticket (ABC-123)' onChange={(e) => {
                 setCurrentTicket(e.currentTarget.value)
             }} value={currentTicket} /><br /><button disabled={!complete} onClick={() => {
-                client?.publish(`${sessionId}/events`, JSON.stringify({
-                    event: 'ticket',
-                    value: currentTicket,
-                    name
-                }))
+                if (currentTicket in votes) {
+                    alert('This ticket has already been pointed! Try a different name.')
+                } else {
+                    client?.publish(`${sessionId}/events`, JSON.stringify({
+                        event: 'ticket',
+                        value: currentTicket,
+                        name
+                    }))
+                }
             }}>Set Ticket</button>
-        </div> : null}
-        <input disabled={complete} placeholder="Enter vote (1, 2, or 3)" value={currentVote} onChange={(e) => {
-            setCurrentVote(e.currentTarget.value)
-        }} /><br /><button disabled={complete} onClick={() => {
-            client?.publish(`${sessionId}/events`, JSON.stringify({
-                event: 'vote',
-                value: parseInt(currentVote),
-                name
-            }))
-            setCurrentVote('')
-        }}>
-            Submit Vote
+        </div> : <div>
+                <input disabled={complete} placeholder="Enter vote (1, 2, or 3)" value={currentVote} onChange={(e) => {
+                    setCurrentVote(e.currentTarget.value)
+                }} /><br /><button disabled={complete} onClick={() => {
+                    client?.publish(`${sessionId}/events`, JSON.stringify({
+                        event: 'vote',
+                        value: parseInt(currentVote),
+                        name
+                    }))
+                    setCurrentVote('')
+                }}>
+                    Submit Vote
         </button> <button onClick={() => {
-            client?.publish(`${sessionId}/events`, JSON.stringify({
-                event: 'complete',
-                value: currentTicket,
-                name
-            }))
-        }} disabled={complete}>Complete Voting</button><br />
+                    client?.publish(`${sessionId}/events`, JSON.stringify({
+                        event: 'complete',
+                        value: currentTicket,
+                        name
+                    }))
+                }} disabled={complete}>Complete Voting</button>
+            </div>}
         <div>
             {Object.keys(votes).reverse().map((ticket) => {
                 const hideVotes = displayTicket === ticket && !complete
@@ -178,6 +190,8 @@ export const SessionView: React.FC<{
                 }}>{vote.name}<br /><b>{hideVotes ? 'x' : vote.vote}</b></div>)}</div></div>
             })}
         </div>
-        <div>Number of events {currentState.count}</div>
+        <p style={{
+            fontSize: 15
+        }}>Events processed {currentState.count}</p>
     </div>
 }

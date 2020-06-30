@@ -38,6 +38,7 @@ function App() {
           <Route exact path='/' component={Instructions} />
           <Route path='/client/:sessionId' component={SessionView} />
         </BrowserRouter>
+        <p><a href="https://github.com/wcatron/esk-pointer-demo">GitHub</a> | <a href='https://www.eskit.net'>ESKit Project</a></p>
       </header>
     </div>
   );
