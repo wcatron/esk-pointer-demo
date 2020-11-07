@@ -5,9 +5,11 @@ import App from './App';
 import * as serviceWorker from './serviceWorker';
 import { ESK } from './useEsk';
 
+const url = process.env.NODE_ENV === 'development' ? 'ws://localhost:8080/ws' : 'wss://demo.eskit.net/ws'
+
 ReactDOM.render(
   <React.StrictMode>
-    <ESK url={`wss://demo.eskit.net/ws`}>
+    <ESK url={url}>
       <App />
     </ESK>
   </React.StrictMode>,
