@@ -8,17 +8,14 @@ type EventPayload = {
     name: string
 }
 
-type Projection = {
+type Aggregate = {
     currentTicket: string
     complete: boolean
-    votes: Record<string, {
-        name: string
-        vote: number
-    }[]>,
+    votes: Record<string, Record<string, number>>,
     count: number
 }
 
-function nextProjection(current: Projection, message: Message) {
+function nextAggregate(current: Aggregate, message: Message):Aggregate {
     try {
         const event = JSON.parse(message.payload) as EventPayload
         console.log('nextProjection', current, event)
@@ -31,7 +28,7 @@ function nextProjection(current: Projection, message: Message) {
                     complete: false,
                     votes: {
                         ...current.votes,
-                        [event.value]: []
+                        [event.value]: {}
                     },
                     count
                 }
@@ -43,18 +40,15 @@ function nextProjection(current: Projection, message: Message) {
                     count
                 }
             case 'vote':
-                const currentVotes = current.currentTicket in current.votes ? current.votes[current.currentTicket] : []
+                const currentVotes = current.currentTicket in current.votes ? current.votes[current.currentTicket] : {}
                 return {
                     ...current,
                     votes: {
                         ...current.votes,
-                        [current.currentTicket]: [
+                        [current.currentTicket]: {
                             ...currentVotes,
-                            {
-                                name: event.name,
-                                vote: parseInt(event.value)
-                            }
-                        ]
+                            [event.name]: parseInt(event.value) as number
+                        }
                     },
                     count
                 }
@@ -69,7 +63,7 @@ function nextProjection(current: Projection, message: Message) {
 // Attempted using useState<Projection>(...) with a useRef(currentState) but the
 // ref.current was not updating to the latest value by the time the next event
 // was beeing processed.
-let singletonState: Projection = {
+let singletonState: Aggregate = {
     complete: true,
     currentTicket: '',
     votes: {},
@@ -89,9 +83,9 @@ export const SessionView: React.FC<{
     const [currentName, setCurrentName] = useState('')
     const [name, setName] = useState<string | undefined>(localStorage.getItem('name') || undefined)
     const client = useEsk()
-    const [currentState, setCurrentState] = useState<Projection>(singletonState)
+    const [currentState, setCurrentState] = useState<Aggregate>(singletonState)
     const onEvent = useCallback((message: Message) => {
-        const nextState = nextProjection(singletonState, message)
+        const nextState = nextAggregate(singletonState, message)
         singletonState = nextState
         setCurrentState(nextState)
     }, [setCurrentState])
@@ -181,13 +175,13 @@ export const SessionView: React.FC<{
                     border: '1px solid #CCC',
                     margin: 5,
                     borderRadius: 10
-                }}>{votes[ticket].map((vote) => <div key={vote.name} style={{
+                }}>{Object.keys(votes[ticket]).map((name) => <div key={name} style={{
                     marginLeft: 20,
                     marginRight: 20,
                     marginTop: 20,
                     textAlign: 'center',
                     display: 'inline-block'
-                }}>{vote.name}<br /><b>{hideVotes ? 'x' : vote.vote}</b></div>)}</div></div>
+                }}>{name}<br /><b>{hideVotes ? 'x' : votes[ticket][name] }</b></div>)}</div></div>
             })}
         </div>
         <p style={{
