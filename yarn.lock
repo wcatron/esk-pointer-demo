@@ -4444,10 +4444,10 @@ escodegen@^1.14.1:
   optionalDependencies:
     source-map "~0.6.1"
 
-esk-client-typescript@^0.1.1:
-  version "0.1.1"
-  resolved "https://registry.yarnpkg.com/esk-client-typescript/-/esk-client-typescript-0.1.1.tgz#54d64f2ef0f5eecce3f65f987b390d0eff691ee0"
-  integrity sha512-WmtJca7z4kAnkRl0+ehNbG8Vd39OFuyc/Pcy7/eiQyqhZ8rLOUfWDhq6RyC/rJuWXsQ3LBKGiqIcE1rDXFKwLQ==
+esk-client-typescript@0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/esk-client-typescript/-/esk-client-typescript-0.2.0.tgz#1e1a0656f46a07f27325fa64864fab6ee5e37657"
+  integrity sha512-Xr7QrxpJFuwuaA40R1r7eheyTNMO7XtP0Os6CDlr+wmpQCskdC4Gfi47aGBnj1ai2K15IeyvO8G+VipPUvz/4w==
   dependencies:
     util "^0.12.3"
 

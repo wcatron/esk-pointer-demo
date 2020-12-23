@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react'
-import { useEsk } from './useEsk'
-import { Message } from 'esk-client-typescript'
+import React, { useMemo, useState } from 'react'
+import { useEsk, useProjection } from './useEsk'
+import { Message, projection } from 'esk-client-typescript'
 
 type EventPayload = {
     event: 'ticket' | 'vote' | 'complete'
@@ -8,14 +8,14 @@ type EventPayload = {
     name: string
 }
 
-type Aggregate = {
+type SessionProjection = {
     currentTicket: string
     complete: boolean
     votes: Record<string, Record<string, number>>,
     count: number
 }
 
-function nextAggregate(current: Aggregate, message: Message):Aggregate {
+function nextSessionProjection(current: SessionProjection, message: Message):SessionProjection {
     try {
         const event = JSON.parse(message.payload) as EventPayload
         console.log('nextProjection', current, event)
@@ -59,16 +59,17 @@ function nextAggregate(current: Aggregate, message: Message):Aggregate {
     }
 }
 
-// Could not figure out a way to use state in the component
-// Attempted using useState<Projection>(...) with a useRef(currentState) but the
-// ref.current was not updating to the latest value by the time the next event
-// was beeing processed.
-let singletonState: Aggregate = {
+let initialState: SessionProjection = {
     complete: true,
     currentTicket: '',
     votes: {},
     count: 0
 }
+
+const sessionProjection = (sectionId: string) => projection<{}, SessionProjection>([`${sectionId}/events`], null, (message, _, prev ) => {
+    return nextSessionProjection(prev, message)
+}, initialState)
+
 
 export const SessionView: React.FC<{
     match: {
@@ -83,28 +84,11 @@ export const SessionView: React.FC<{
     const [currentName, setCurrentName] = useState('')
     const [name, setName] = useState<string | undefined>(localStorage.getItem('name') || undefined)
     const client = useEsk()
-    const [currentState, setCurrentState] = useState<Aggregate>(singletonState)
-    const onEvent = useCallback((message: Message) => {
-        const nextState = nextAggregate(singletonState, message)
-        singletonState = nextState
-        setCurrentState(nextState)
-    }, [setCurrentState])
+    const projection = useMemo(() => {
+        return sessionProjection(sessionId)
+    }, [sessionId])
 
-    useEffect(() => {
-        const onOpen = () => {
-            client!.subscribe(`${sessionId}/events`, 0, onEvent)
-        }
-        if (client) {
-            if (!client.connected) {
-                client.on('open', onOpen)
-            } else {
-                onOpen()
-            }
-            return () => {
-                client.unsubscribe(`${sessionId}/events`, onEvent)
-            }
-        }
-    }, [sessionId, client, onEvent])
+    const currentState = useProjection(projection, { sessionId })
 
     const { complete, votes, currentTicket: displayTicket } = currentState
 
